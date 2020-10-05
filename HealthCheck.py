@@ -92,6 +92,7 @@ async def on_raw_reaction_remove(payload):
 async def on_message(message):
     global CheckMessageID
     global CheckFlag
+
     if message.author.id == 762728476913434625:
         if message.content.startswith(CheckMessage):
             CheckMessageID = message.id
@@ -140,6 +141,10 @@ async def add(ctx,grade,affiliation,name):
 @bot.command()
 async def call(ctx):
     await ctx.send(CheckMessage)
+
+@bot.command()
+async def replay(ctx,re):
+    await ctx.send()
 
 bot.remove_command('help')
 @bot.command()
