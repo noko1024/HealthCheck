@@ -21,7 +21,7 @@ basepath = os.path.split(os.path.realpath(__file__))[0]
 bot = commands.Bot(command_prefix='//')
 CheckFlag = False
 CheckMessageID = 762792085916614678
-CheckMessage = "@everyone\お疲れ様でした♪"
+CheckMessage = "お疲れ様でした♪"
 ManageChannel = 702410476721668146
 Savedate ="MM/DD"
 
@@ -186,7 +186,6 @@ async def call(ctx,channelName = None):
     CheckMessageID = msg.id
     CheckFlag = True
     Savedate = str(datetime.datetime.now().strftime("%m-%d"))
-    print(Savedate)
 
 @bot.command()
 async def close(ctx):
@@ -200,16 +199,15 @@ async def close(ctx):
     await ctx.send("集計中…")
     conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
     c = conn.cursor()
+
     outputUser =[]
     outputUser.append(Savedate)
-    print(outputUser)
     for i in [1,2,3,4,5]:
         c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ?",(i,))
+        result = c.fetchall()
         
-        if c.fetchall() !=[]:
-
-            print(c.fetchall())
-            for users in c.fetchall()[0]:
+        if len(result)!=0:
+            for users in result[0]:
                 print(users)
                 status =""
                 if users[3] == 1:
