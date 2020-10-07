@@ -41,7 +41,9 @@ async def TimeTaskManage():
 
     if datetime.datetime.now().strftime('%H:%M') =="0000" and CheckFlag is True:
         TaskClear()
-        await ctx.send("集計中…")
+	channel =bot.get_channel(ManageChannel)
+	
+        await channel.send("集計中…")
         conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
         c = conn.cursor()
 
@@ -62,8 +64,8 @@ async def TimeTaskManage():
         Filepath = os.path.join(basepath,"HealthCheck-helthList("+Savedate+").txt")
         with open(Filepath,mode="w") as f :
             f.write('\n'.join(outputUser))
-        await ctx.send("集計完了♪")
-        await ctx.send(file=discord.File(Filepath))
+        await channel.send("集計完了♪")
+        await channel.send(file=discord.File(Filepath))
 
 def ConfigIO(type,messageID=None):
     #type write,read,remove
