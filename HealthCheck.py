@@ -41,6 +41,29 @@ async def TimeTaskManage():
 
     if datetime.datetime.now().strftime('%H:%M') =="0000" and CheckFlag is True:
         TaskClear()
+        await ctx.send("集計中…")
+        conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
+        c = conn.cursor()
+
+        outputUser =[]
+        outputUser.append(Savedate)
+        for i in [1,2,3,4,5]:
+            c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ? and health != ?",(i,0))
+            result = c.fetchall()
+        
+            if len(result)!=0:
+                for users in result:
+                    print(users)
+                    status = users[3].replace("1","良好").replace("2","不良")
+
+                    user = str(users[0])+"-"+str(users[1])+":"+str(users[2])+" 体調:"+status
+                    outputUser.append(user)
+
+        Filepath = os.path.join(basepath,"HealthCheck-helthList("+Savedate+").txt")
+        with open(Filepath,mode="w") as f :
+            f.write('\n'.join(outputUser))
+        await ctx.send("集計完了♪")
+        await ctx.send(file=discord.File(Filepath))
 
 def ConfigIO(type,messageID=None):
     #type write,read,remove
@@ -205,18 +228,12 @@ async def close(ctx):
     for i in [1,2,3,4,5]:
         c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ?",(i,))
         result = c.fetchall()
-        
+    
         if len(result)!=0:
-            for users in result[0]:
-                print(users)
-                status =""
-                if users[3] == 1:
-                    status = "良好"
-                elif users[3] == 2:
-                    status = "不良"
-
+            for users in result:
+                
+                status = users[3].replace("1","良好").replace("2","不良")
                 user = str(users[0])+"-"+str(users[1])+":"+str(users[2])+" 体調:"+status
-                print(user)
                 outputUser.append(user)
     
     Filepath = os.path.join(basepath,"HealthCheck-helthList("+Savedate+").txt")
@@ -224,7 +241,6 @@ async def close(ctx):
         f.write('\n'.join(outputUser))
     await ctx.send("集計完了♪")
     await ctx.send(file=discord.File(Filepath))
-
 
 
 
