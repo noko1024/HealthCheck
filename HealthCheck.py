@@ -1,5 +1,3 @@
-from os import stat
-from attr import dataclass
 import discord
 from discord import embeds
 from discord import message
@@ -20,19 +18,33 @@ import datetime
 basepath = os.path.split(os.path.realpath(__file__))[0]
 bot = commands.Bot(command_prefix='//')
 CheckFlag = False
-CheckMessageID = 762792085916614678
-CheckMessage = "お疲れ様でした♪"
-ManageChannel = 702410476721668146
-Savedate ="MM/DD"
+CheckMessageID = 0
+CheckMessage = "お疲れ様でした♪\n部活動に参加された方はリアクションをお願いします♪\n良好⇒👌 不良⇒😫\n@everyone"
+ManageChannel = 763141304771149855
+Savedate ="MM-DD"
+
 
 def TaskClear():
-        result=ConfigIO("remove")
-        if result == True:
-            CheckFlag = False
-            CheckMessageID = None
-        else:
-            param = {"Content-Type":"application/json","content": "@everyone 【異常通知】\nTimeTaskManageの処理を正常に終了できませんでした。\nコンフィグファイルの削除失敗"}
-            requests.post("https://discordapp.com/api/webhooks/762755573954772992/P3tF2WDxF03rYip9QyW3DNjGxFF5ZLRFE-aRVkNrNH6KTTPAy50OY-48cH1DZVZk8Z9N",data=param)
+    global CheckFlag
+    global CheckMessageID
+
+    result=tempIO("remove")
+    try:
+        conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
+        c = conn.cursor()
+        c.execute("update userList set healthStatus = ? where healthStatus != ?",(0,0,))
+        conn.commit()
+        conn.close()
+    except:
+        param = {"Content-Type":"application/json","content": "@everyone 【異常通知】\nTimeTaskManageの処理を正常に終了できませんでした。\nDBファイルのhealthStatus初期化失敗"}
+        requests.post("https://discordapp.com/api/webhooks/762755573954772992/P3tF2WDxF03rYip9QyW3DNjGxFF5ZLRFE-aRVkNrNH6KTTPAy50OY-48cH1DZVZk8Z9N",data=param)
+
+    if result == True:
+        CheckFlag = False
+        CheckMessageID = None
+    else:
+        param = {"Content-Type":"application/json","content": "@everyone 【異常通知】\nTimeTaskManageの処理を正常に終了できませんでした。\nコンフィグファイルの削除失敗"}
+        requests.post("https://discordapp.com/api/webhooks/762755573954772992/P3tF2WDxF03rYip9QyW3DNjGxFF5ZLRFE-aRVkNrNH6KTTPAy50OY-48cH1DZVZk8Z9N",data=param)
 
 @tasks.loop(seconds=30)
 async def TimeTaskManage():
@@ -41,36 +53,11 @@ async def TimeTaskManage():
 
     if datetime.datetime.now().strftime('%H:%M') =="0000" and CheckFlag is True:
         TaskClear()
-	channel =bot.get_channel(ManageChannel)
-	
-        await channel.send("集計中…")
-        conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
-        c = conn.cursor()
 
-        outputUser =[]
-        outputUser.append(Savedate)
-        for i in [1,2,3,4,5]:
-            c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ? and health != ?",(i,0))
-            result = c.fetchall()
-        
-            if len(result)!=0:
-                for users in result:
-                    print(users)
-                    status = users[3].replace("1","良好").replace("2","不良")
-
-                    user = str(users[0])+"-"+str(users[1])+":"+str(users[2])+" 体調:"+status
-                    outputUser.append(user)
-
-        Filepath = os.path.join(basepath,"HealthCheck-helthList("+Savedate+").txt")
-        with open(Filepath,mode="w") as f :
-            f.write('\n'.join(outputUser))
-        await channel.send("集計完了♪")
-        await channel.send(file=discord.File(Filepath))
-
-def ConfigIO(type,messageID=None):
+def tempIO(type,messageID=None):
     #type write,read,remove
 
-    configpath = os.path.join(basepath,"HealthCheck-config.txt")
+    configpath = os.path.join(basepath,"HealthCheck-tempData.txt")
 
     if type =="write":
         with open(configpath,"w") as f:
@@ -94,7 +81,7 @@ def ConfigIO(type,messageID=None):
 @bot.event
 async def on_ready():
     global CheckMessageID
-    #CheckMessageID= ConfigIO("read")
+    #CheckMessageID= tempIO("read")
     print("BootSuccess")
     pass
 
@@ -110,11 +97,10 @@ async def on_raw_reaction_add(payload):
     c = conn.cursor()
     c.execute("select userName,healthStatus from userList where userID == ?",(payload.member.id,))
     result = c.fetchall()
-    c.close()
 
     if not bool(result):
         await payload.member.send("こんにちは!\n私は、部活動に参加してくれた皆さんの体調を確認しています♪\nまだ知らない方だったので情報の登録をお願いします。リアクションの付け直しもお願いします")
-        embed = discord.Embed(title = "//add [学年] [クラスまたは所属分野] [お名前]",description="学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生移行の方は[J,M,E,D,A]から入力してください")
+        embed = discord.Embed(title = "//add [学年] [クラスまたは所属分野] [お名前]",description="学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生以降の方は[J,M,E,D,A]から入力してください")
         await payload.member.send(embed=embed)
     else:
         if result[0][1] != 0:
@@ -141,7 +127,6 @@ async def on_raw_reaction_add(payload):
 
 @bot.event
 async def on_raw_reaction_remove(payload):
-    print(payload)
     if CheckFlag !=True or CheckMessageID != payload.message_id:
         return
     
@@ -200,6 +185,9 @@ async def add(ctx,grade,affiliation,name):
 
 @bot.command()
 async def call(ctx,channelName = None):
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.send("サーバーのadmin権限を持った方しか実行できません！")
+        return
     global CheckFlag
     global CheckMessageID
     global Savedate
@@ -207,16 +195,17 @@ async def call(ctx,channelName = None):
     msg = await ctx.send(CheckMessage)
     await msg.add_reaction("👌")
     await msg.add_reaction("😫")
-    ConfigIO("write",msg.id)
+    tempIO("write",msg.id)
     CheckMessageID = msg.id
     CheckFlag = True
     Savedate = str(datetime.datetime.now().strftime("%m-%d"))
 
 @bot.command()
 async def close(ctx):
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.send("サーバーのadmin権限を持った方しか実行できません！")
+        return
     if CheckFlag == True:
-        TaskClear()
-        ConfigIO("remove")
         await ctx.send("分かりました♪確認を終了します")
     else:
         await ctx.send("まだ集計は行われていないみたいです…")
@@ -230,19 +219,27 @@ async def close(ctx):
     for i in [1,2,3,4,5]:
         c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ?",(i,))
         result = c.fetchall()
-    
+        print(result)
         if len(result)!=0:
             for users in result:
-                
-                status = users[3].replace("1","良好").replace("2","不良")
+                status =""
+                if users[3] == 1:
+                    status = "良好"
+                elif users[3] == 2:
+                    status = "不良"
+
                 user = str(users[0])+"-"+str(users[1])+":"+str(users[2])+" 体調:"+status
+                print(user)
                 outputUser.append(user)
-    
+    conn.close()
     Filepath = os.path.join(basepath,"HealthCheck-helthList("+Savedate+").txt")
     with open(Filepath,mode="w") as f :
         f.write('\n'.join(outputUser))
     await ctx.send("集計完了♪")
     await ctx.send(file=discord.File(Filepath))
+    TaskClear()
+    
+
 
 
 
@@ -253,17 +250,18 @@ async def reason(ctx,reasons):
     c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userID == ?",(ctx.author.id,))
     result = c.fetchall()
     if not result:
-        ctx.send("こんにちは!\n私は、部活動に参加してくれた皆さんの体調を確認しています♪\nまだ知らない方だったので情報の登録をお願いします。")
+        await ctx.send("こんにちは!\n私は、部活動に参加してくれた皆さんの体調を確認しています♪\nまだ知らない方だったので情報の登録をお願いします。")
         embed = discord.Embed(title = "//add [学年] [クラスまたは所属分野] [お名前]",description="学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生移行の方は[J,M,E,D,A]から入力してください")
         await ctx.send(embed=embed)
         return
 
     status = ""
-    if result[0][3] == 0:
+
+    if result[3] == 0:
         status = "確認中"
-    elif result[0][3] == 1:
+    elif result[3] == 1:
         status = "良好"
-    elif result[0][3] == 2:
+    elif result[3] == 2:
         status = "不良"
 
     channel =bot.get_channel(ManageChannel)
@@ -283,7 +281,21 @@ async def reason(ctx,reasons):
 bot.remove_command('help')
 @bot.command()
 async def help(ctx):
-    pass
+    embed=discord.Embed(title="私の使い方", color=0xf8d3cd)
+    embed.set_author(name="体調チェックします!", icon_url="https://cdn.discordapp.com/avatars/762728476913434625/5857196be8122b7326d681025d22e582.png")
+    embed.add_field(name="//help", value="ヘルプコマンドを表示します。", inline=False)
+    embed.add_field(name="//add [学年] [クラスまたは所属分野] [お名前]", value="ユーザー情報の登録を行います。学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生以降の方は[J,M,E,D,A]から入力してください", inline=False)
+    embed.add_field(name="//reason [連絡したい事]", value="admin権限を持った人に、あなたの名前と体調を添えて連絡出来ます。", inline=False)
+    
+    if ctx.author.guild_permissions.administrator:
+        embed.add_field(name="管理者向けコマンド一覧",value="adminを割り振られている方のみが使用できます。\nまた、このメッセージ以下が見えている方はadmin権限を有しています。", inline=False)
+        embed.add_field(name="//call", value="体調確認と集計を開始します。また、送信されたチャンネルに集計用メッセージを送信します。\n(午前0時で自動的に集計を終了します)", inline=False)
+        embed.add_field(name="//close", value="体調確認と集計を終了します。また、送信されたチャンネルに集計結果を出力します。", inline=False)
+    
+    embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
+    
+    embed.set_footer(text="Version1.0 byこばさん SpecialThanks たかりん ")
+    await ctx.send(embed=embed)
 
 @bot.command()
 @commands.is_owner()
@@ -301,5 +313,14 @@ async def sh(ctx):
 	await ctx.send("shutdown now...")
 	await bot.logout()
 
+
+with open(os.path.join(basepath,"HealthCheck-Config.txt"))as f:
+    BootData= f.read().splitlines()
+    TOKEN = BootData[0]
+
+
+
+
+
 TimeTaskManage.start()
-bot.run("NzYyNzI4NDc2OTEzNDM0NjI1.X3tYPw.zdgbCMbAgDtxf3NZP5OHIGEGlkA")
+bot.run(TOKEN)
