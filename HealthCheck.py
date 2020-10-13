@@ -6,6 +6,9 @@ from discord import reaction
 from discord.embeds import Embed
 from discord import client
 from discord.ext import commands,tasks
+from discord.ext.commands import context
+from discord_webhook import DiscordWebhook, DiscordEmbed
+from discord_webhook import DiscordWebhook, DiscordEmbed
 import sqlite3
 import time
 import os
@@ -137,6 +140,24 @@ async def on_raw_reaction_remove(payload):
     c.close()
     user = bot.get_user(payload.user_id)
     await user.send("確認を取り消しました")
+
+@bot.event
+async def on_command_error(ctx,error):
+    #引数不足はスルー
+    if str(type(error)) == "<class 'discord.ext.commands.errors.MissingRequiredArgument'>":
+        return
+    #コマンド不明はスルー
+    #if str(type(error)) == "<class 'discord.ext.commands.errors.CommandNotFound'>":
+    #    return
+    try:
+        guildName = str(ctx.guild.name)
+    except:
+        guildName ="DM"
+    errorLog = ("エラーが発生しました：" +str(error)+"\nServername:"+guildName+"\nName:"+str(ctx.author))
+    webhook = DiscordWebhook(url='https://discordapp.com/api/webhooks/762755573954772992/P3tF2WDxF03rYip9QyW3DNjGxFF5ZLRFE-aRVkNrNH6KTTPAy50OY-48cH1DZVZk8Z9N',content="@everyone")
+    embed = DiscordEmbed(title='エラー', description=errorLog, color=0xff0000)
+    webhook.add_embed(embed)
+    webhook.execute()
 
 
 #メッセージを全取得してフィルター
@@ -283,19 +304,56 @@ bot.remove_command('help')
 async def help(ctx):
     embed=discord.Embed(title="私の使い方", color=0xf8d3cd)
     embed.set_author(name="体調チェックします!", icon_url="https://cdn.discordapp.com/avatars/762728476913434625/5857196be8122b7326d681025d22e582.png")
-    embed.add_field(name="//help", value="ヘルプコマンドを表示します。", inline=False)
-    embed.add_field(name="//add [学年] [クラスまたは所属分野] [お名前]", value="ユーザー情報の登録を行います。学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生以降の方は[J,M,E,D,A]から入力してください", inline=False)
-    embed.add_field(name="//reason [連絡したい事]", value="admin権限を持った人に、あなたの名前と体調を添えて連絡出来ます。", inline=False)
-    
-    if ctx.author.guild_permissions.administrator:
-        embed.add_field(name="管理者向けコマンド一覧",value="adminを割り振られている方のみが使用できます。\nまた、このメッセージ以下が見えている方はadmin権限を有しています。", inline=False)
-        embed.add_field(name="//call", value="体調確認と集計を開始します。また、送信されたチャンネルに集計用メッセージを送信します。\n(午前0時で自動的に集計を終了します)", inline=False)
-        embed.add_field(name="//close", value="体調確認と集計を終了します。また、送信されたチャンネルに集計結果を出力します。", inline=False)
-    
+    embed.add_field(name="//help", value="ヘルプコマンドを表示します。DMからも確認できます。", inline=False)
+    embed.add_field(name="//add [学年] [クラスまたは所属分野] [お名前]", value="ユーザー情報の登録を行います。学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生以降の方は[J,M,E,D,A]から入力してください\n設定後DMが来ます,DMからも設定できます。", inline=False)
+    embed.add_field(name="//reason [連絡したい事]", value="admin権限を持った人に、あなたの名前と体調を添えて連絡出来ます。DMからも送信できます", inline=False)
+    embed.add_field(name="//info", value="開発チームからの情報(主に障害情報)をお知らせします。", inline=False)
+    embed.add_field(name="//ver", value="私の更新情報を確認できます。", inline=False)
+
+    try:
+        if ctx.author.guild_permissions.administrator:
+            embed.add_field(name="管理者向けコマンド一覧",value="adminを割り振られている方のみが使用できます。\nまた、このメッセージ以下が見えている方はadmin権限を有しています。", inline=False)
+            embed.add_field(name="//call", value="体調確認と集計を開始します。また、送信されたチャンネルに集計用メッセージを送信します。\n(午前0時で自動的に集計を終了します)", inline=False)
+            embed.add_field(name="//close", value="体調確認と集計を終了します。また、送信されたチャンネルに集計結果を出力します。", inline=False)
+    except:
+        pass
     embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
     
-    embed.set_footer(text="Version1.0 byこばさん SpecialThanks たかりん ")
+    embed.set_footer(text="Version1.1 byこばさん SpecialThanks たかりん ")
     await ctx.send(embed=embed)
+
+@bot.command()
+@commands.is_owner()
+async def userhelp(ctx):
+    await ctx.message.delete()
+
+    embed=discord.Embed(title="私の使い方", color=0xf8d3cd)
+    embed.set_author(name="体調チェックします!", icon_url="https://cdn.discordapp.com/avatars/762728476913434625/5857196be8122b7326d681025d22e582.png")
+    embed.add_field(name="//help", value="ヘルプコマンドを表示します。DMからも確認できます。", inline=False)
+    embed.add_field(name="//add [学年] [クラスまたは所属分野] [お名前]", value="ユーザー情報の登録を行います。学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生以降の方は[J,M,E,D,A]から入力してください\n設定後DMが来ます,DMからも設定できます。", inline=False)
+    embed.add_field(name="//reason [連絡したい事]", value="admin権限を持った人に、あなたの名前と体調を添えて連絡出来ます。DMからも送信できます", inline=False)
+    embed.add_field(name="//info", value="開発チームからの情報(主に障害情報)をお知らせします。", inline=False)
+    embed.add_field(name="//ver", value="私の更新情報を確認できます。", inline=False)
+    embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
+    embed.set_footer(text="Version1.1 byこばさん SpecialThanks たかりん ")
+    await ctx.send(embed=embed)
+    
+
+@bot.command()
+async def info(ctx):
+    embed=discord.Embed(title="お知らせ", color=0xf8d3cd)
+    embed.add_field(name="DMが送信されない問題",value="一部のユーザーにDMが送信されない問題が確認されています。\nユーザーの設定側でフレンド以外からのDMを送受信しない設定を適用している可能性があります。", inline=False)
+    embed.add_field(name="集計結果に関する問題", value="集計結果が適切に処理されていない可能性があります。バックアップを行いながら調査しています。", inline=False)
+    await ctx.send(embed=embed)
+    pass
+
+@bot.command()
+async def ver(ctx):
+    embed=discord.Embed(title="更新情報", color=0xf8d3cd)
+    embed.add_field(name="Version 1.0",value="リリース!", inline=False)
+    embed.add_field(name="version 1.1", value="ver,infoコマンドを追加,Botの監視体制を強化,軽微なバグを修正", inline=False)
+    await ctx.send(embed=embed)
+
 
 @bot.command()
 @commands.is_owner()
@@ -317,6 +375,7 @@ async def sh(ctx):
 with open(os.path.join(basepath,"HealthCheck-Config.txt"))as f:
     BootData= f.read().splitlines()
     TOKEN = BootData[0]
+
 
 
 
