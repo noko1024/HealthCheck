@@ -8,7 +8,6 @@ from discord import client
 from discord.ext import commands,tasks
 from discord.ext.commands import context
 from discord_webhook import DiscordWebhook, DiscordEmbed
-from discord_webhook import DiscordWebhook, DiscordEmbed
 import sqlite3
 import time
 import os
@@ -238,7 +237,7 @@ async def close(ctx):
     outputUser =[]
     outputUser.append(Savedate)
     for i in [1,2,3,4,5]:
-        c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ?",(i,))
+        c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ? and healthStatus !=? ",(i,0,))
         result = c.fetchall()
         print(result)
         if len(result)!=0:
@@ -297,6 +296,53 @@ async def reason(ctx,reasons):
         await ctx.send("送信成功♪")
 
     
+@bot.command()
+async def show(ctx,health=None):
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.send("サーバーのadmin権限を持った方しか実行できません！")
+        return
+    
+    conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
+    c = conn.cursor()
+    outputshow =""
+    if health == "h":
+        outputshow ="体調入力者一覧\n"
+        num =0
+        for i in [1,2,3,4,5]:
+            c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ? and healthStatus != ? ",(i,0,))
+            result = c.fetchall()
+            print(result)
+            if len(result)!=0:
+                for users in result:
+                    status =""
+                    if users[3] == 1:
+                        status = "良好"
+                    elif users[3] == 2:
+                        status = "不良"
+                    num+=1            
+                    user = str(users[0])+"-"+str(users[1])+":"+str(users[2])+" 体調:"+status+"\n"
+                    print(user)
+                    outputshow = outputshow+user
+        outputshow=outputshow+"計"+str(num)+"人"
+
+    else:
+        outputshow ="登録者一覧\n"
+        num =0
+        for i in [1,2,3,4,5]:
+            c.execute("select userGrade,userAffiliation,userName from userList where userGrade == ? ",(i,))
+            result = c.fetchall()
+            print(result)
+            if len(result)!=0:
+                for users in result:            
+                    user = str(users[0])+"-"+str(users[1])+":"+str(users[2]+"\n")
+                    print(user)
+                    outputshow = outputshow+user
+                    num+=1
+
+        outputshow=outputshow+"計"+str(num)+"人"
+    
+    conn.close()
+    await ctx.send(outputshow)
     
 
 bot.remove_command('help')
@@ -315,11 +361,12 @@ async def help(ctx):
             embed.add_field(name="管理者向けコマンド一覧",value="adminを割り振られている方のみが使用できます。\nまた、このメッセージ以下が見えている方はadmin権限を有しています。", inline=False)
             embed.add_field(name="//call", value="体調確認と集計を開始します。また、送信されたチャンネルに集計用メッセージを送信します。\n(午前0時で自動的に集計を終了します)", inline=False)
             embed.add_field(name="//close", value="体調確認と集計を終了します。また、送信されたチャンネルに集計結果を出力します。", inline=False)
+            embed.add_field(name="//show [h]", value="現在登録されているユーザーの一覧を表示します。また、hオプションを付けることで体調を報告した方の一覧を表示します。", inline=False)
     except:
         pass
     embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
     
-    embed.set_footer(text="Version1.1 byこばさん SpecialThanks たかりん ")
+    embed.set_footer(text="Version1.2 byこばさん SpecialThanks たかりん ")
     await ctx.send(embed=embed)
 
 @bot.command()
@@ -335,7 +382,7 @@ async def userhelp(ctx):
     embed.add_field(name="//info", value="開発チームからの情報(主に障害情報)をお知らせします。", inline=False)
     embed.add_field(name="//ver", value="私の更新情報を確認できます。", inline=False)
     embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
-    embed.set_footer(text="Version1.1 byこばさん SpecialThanks たかりん ")
+    embed.set_footer(text="Version1.2 byこばさん SpecialThanks たかりん ")
     await ctx.send(embed=embed)
     
 
@@ -344,6 +391,7 @@ async def info(ctx):
     embed=discord.Embed(title="お知らせ", color=0xf8d3cd)
     embed.add_field(name="DMが送信されない問題",value="一部のユーザーにDMが送信されない問題が確認されています。\nユーザーの設定側でフレンド以外からのDMを送受信しない設定を適用している可能性があります。", inline=False)
     embed.add_field(name="集計結果に関する問題", value="集計結果が適切に処理されていない可能性があります。バックアップを行いながら調査しています。", inline=False)
+    embed.add_field(name="集計結果に関する問題", value="<続報>この問題は解決されました。次アップデートでこの情報は削除されます。", inline=False)
     await ctx.send(embed=embed)
     pass
 
@@ -352,6 +400,7 @@ async def ver(ctx):
     embed=discord.Embed(title="更新情報", color=0xf8d3cd)
     embed.add_field(name="Version 1.0",value="リリース!", inline=False)
     embed.add_field(name="version 1.1", value="ver,infoコマンドを追加,Botの監視体制を強化,軽微なバグを修正", inline=False)
+    embed.add_field(name="Version 1.2",value="集計システムの意図しない動作を修正,管理者向けにコマンドを追加", inline=False)
     await ctx.send(embed=embed)
 
 
@@ -372,9 +421,13 @@ async def sh(ctx):
 	await bot.logout()
 
 
-with open(os.path.join(basepath,"HealthCheck-Config.txt"))as f:
-    BootData= f.read().splitlines()
-    TOKEN = BootData[0]
+TOKEN = ""
+try:
+    with open(os.path.join(basepath,"HealthCheck-Config.txt"))as f:
+        BootData= f.read().splitlines()
+        TOKEN = BootData[0]
+except:
+    pass
 
 
 
