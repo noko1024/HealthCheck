@@ -1,3 +1,4 @@
+from datetime import date
 import discord
 from discord import embeds
 from discord import message
@@ -7,6 +8,7 @@ from discord.embeds import Embed
 from discord import client
 from discord.ext import commands,tasks
 from discord.ext.commands import context
+from discord.ext.commands.converter import _Greedy
 from discord_webhook import DiscordWebhook, DiscordEmbed
 import sqlite3
 import time
@@ -19,19 +21,22 @@ import datetime
 
 basepath = os.path.split(os.path.realpath(__file__))[0]
 bot = commands.Bot(command_prefix='//')
+#体調チェックのフラグ
 CheckFlag = False
+#監視すべきMessageID
 CheckMessageID = 0
-CheckMessage = "お疲れ様でした♪\n部活動に参加された方はリアクションをお願いします♪\n良好⇒👌 不良⇒😫\n@everyone"
-ManageChannel = 763141304771149855
+#Callされた日の日付
 Savedate ="MM-DD"
 
-
+#初期化
 def TaskClear():
     global CheckFlag
     global CheckMessageID
-
+    #tempファイル削除
     result=tempIO("remove")
+    
     try:
+        #データベース初期化
         conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
         c = conn.cursor()
         c.execute("update userList set healthStatus = ? where healthStatus != ?",(0,0,))
@@ -39,38 +44,100 @@ def TaskClear():
         conn.close()
     except:
         param = {"Content-Type":"application/json","content": "@everyone 【異常通知】\nTimeTaskManageの処理を正常に終了できませんでした。\nDBファイルのhealthStatus初期化失敗"}
-        requests.post("https://discordapp.com/api/webhooks/762755573954772992/P3tF2WDxF03rYip9QyW3DNjGxFF5ZLRFE-aRVkNrNH6KTTPAy50OY-48cH1DZVZk8Z9N",data=param)
+        requests.post(webhookURL,data=param)
 
     if result == True:
         CheckFlag = False
         CheckMessageID = None
     else:
         param = {"Content-Type":"application/json","content": "@everyone 【異常通知】\nTimeTaskManageの処理を正常に終了できませんでした。\nコンフィグファイルの削除失敗"}
-        requests.post("https://discordapp.com/api/webhooks/762755573954772992/P3tF2WDxF03rYip9QyW3DNjGxFF5ZLRFE-aRVkNrNH6KTTPAy50OY-48cH1DZVZk8Z9N",data=param)
+        requests.post(webhookURL,data=param)
 
 @tasks.loop(seconds=30)
 async def TimeTaskManage():
-    global CheckFlag
-    global CheckMessageID
-
+    #毎日0000にFlagが立っていれば集計and初期化する
     if datetime.datetime.now().strftime('%H:%M') =="0000" and CheckFlag is True:
+        Total()
         TaskClear()
 
-def tempIO(type,messageID=None):
+#集計メソッド
+def Total():
+    print("GotoT")
+    conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
+    c = conn.cursor()
+
+    outputUser =[]
+    outputUser.append(Savedate)
+    #学年別に抽出
+    for i in [1,2,3,4,5]:
+        c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ? and healthStatus !=? ",(i,0,))
+        result = c.fetchall()
+
+        #該当データがあれば
+        if len(result)!=0:
+            #クラスソート呼び出し
+            result=sorts(result,i)
+            print(result)
+            for users in result:
+
+                    #文字数字相互変換
+                status =""
+
+                if users[3] == 1:
+                    status = "良好"
+                elif users[3] == 2:
+                    status = "不良"
+
+                user = str(users[0])+"-"+str(users[1])+":"+str(users[2])+" 体調:"+status
+                outputUser.append(user)
+    conn.close()
+    Filepath = os.path.join(basepath,"HealthCheck-helthList("+Savedate+").txt")
+    with open(Filepath,mode="w") as f :
+        f.write('\n'.join(outputUser))
+    
+    return Filepath
+
+def sorts(result,grade):
+    #クラスソート
+    # 1年生は1,2,3
+    # 2年生以降はJMEDA 
+    #もし一年生なら
+    print(result)
+    print(grade)
+    if grade== 1:
+
+        first=[userdata for userdata in result if userdata[1] == 1]
+        second=[userdata for userdata in result if userdata[1] == 2]
+        third=[userdata for userdata in result if userdata[1] == 3]
+        fourth=[userdata for userdata in result if userdata[1] == 4]
+        result=first+second+third
+        return result
+    else:
+        J=[userdata for userdata in result if userdata[1] == "J"]
+        M=[userdata for userdata in result if userdata[1] == "M"]
+        E=[userdata for userdata in result if userdata[1] == "E"]
+        D=[userdata for userdata in result if userdata[1] == "D"]
+        A=[userdata for userdata in result if userdata[1] == "A"]
+        result=J+M+E+D+A
+        return result
+        
+#tempファイル制御
+def tempIO(type,messageID=None,date=None):
     #type write,read,remove
 
     configpath = os.path.join(basepath,"HealthCheck-tempData.txt")
 
     if type =="write":
         with open(configpath,"w") as f:
-            f.write(str(messageID))
+            f.writelines([str(messageID),"\n"+str(date)])
 
     elif type == "read":
         try:
             with open(configpath) as f:
-                return f.read()
+                read=f.readlines()
+                return int(read[0]),read[1]
         except:
-            return None
+            return None,None
 
     elif type == "remove":
         try:
@@ -83,9 +150,15 @@ def tempIO(type,messageID=None):
 @bot.event
 async def on_ready():
     global CheckMessageID
-    #CheckMessageID= tempIO("read")
+    global Savedate
+    global CheckFlag
+    #前回のID取得
+    CheckMessageID,Savedate= tempIO("read")
+    #読み取れたら
+    if not CheckMessageID is None:
+        CheckFlag = True
+
     print("BootSuccess")
-    pass
 
 @bot.event
 async def on_raw_reaction_add(payload):
@@ -140,9 +213,10 @@ async def on_raw_reaction_remove(payload):
     user = bot.get_user(payload.user_id)
     await user.send("確認を取り消しました")
 
+
 @bot.event
 async def on_command_error(ctx,error):
-    #引数不足はスルー
+    #引数不足
     if str(type(error)) == "<class 'discord.ext.commands.errors.MissingRequiredArgument'>":
         return
     #コマンド不明はスルー
@@ -153,7 +227,7 @@ async def on_command_error(ctx,error):
     except:
         guildName ="DM"
     errorLog = ("エラーが発生しました：" +str(error)+"\nServername:"+guildName+"\nName:"+str(ctx.author))
-    webhook = DiscordWebhook(url='https://discordapp.com/api/webhooks/762755573954772992/P3tF2WDxF03rYip9QyW3DNjGxFF5ZLRFE-aRVkNrNH6KTTPAy50OY-48cH1DZVZk8Z9N',content="@everyone")
+    webhook = DiscordWebhook(url=webhookURL,content="@everyone")
     embed = DiscordEmbed(title='エラー', description=errorLog, color=0xff0000)
     webhook.add_embed(embed)
     webhook.execute()
@@ -215,10 +289,10 @@ async def call(ctx,channelName = None):
     msg = await ctx.send(CheckMessage)
     await msg.add_reaction("👌")
     await msg.add_reaction("😫")
-    tempIO("write",msg.id)
+    Savedate = str(datetime.datetime.now().strftime("%m-%d"))
+    tempIO("write",msg.id,Savedate)
     CheckMessageID = msg.id
     CheckFlag = True
-    Savedate = str(datetime.datetime.now().strftime("%m-%d"))
 
 @bot.command()
 async def close(ctx):
@@ -231,30 +305,7 @@ async def close(ctx):
         await ctx.send("まだ集計は行われていないみたいです…")
         return
     await ctx.send("集計中…")
-    conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
-    c = conn.cursor()
-
-    outputUser =[]
-    outputUser.append(Savedate)
-    for i in [1,2,3,4,5]:
-        c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ? and healthStatus !=? ",(i,0,))
-        result = c.fetchall()
-        print(result)
-        if len(result)!=0:
-            for users in result:
-                status =""
-                if users[3] == 1:
-                    status = "良好"
-                elif users[3] == 2:
-                    status = "不良"
-
-                user = str(users[0])+"-"+str(users[1])+":"+str(users[2])+" 体調:"+status
-                print(user)
-                outputUser.append(user)
-    conn.close()
-    Filepath = os.path.join(basepath,"HealthCheck-helthList("+Savedate+").txt")
-    with open(Filepath,mode="w") as f :
-        f.write('\n'.join(outputUser))
+    Filepath=Total()
     await ctx.send("集計完了♪")
     await ctx.send(file=discord.File(Filepath))
     TaskClear()
@@ -311,6 +362,8 @@ async def show(ctx,health=None):
         for i in [1,2,3,4,5]:
             c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where userGrade == ? and healthStatus != ? ",(i,0,))
             result = c.fetchall()
+            result = sorts(result,i)
+            
             print(result)
             if len(result)!=0:
                 for users in result:
@@ -331,6 +384,7 @@ async def show(ctx,health=None):
         for i in [1,2,3,4,5]:
             c.execute("select userGrade,userAffiliation,userName from userList where userGrade == ? ",(i,))
             result = c.fetchall()
+            result = sorts(result,i)
             print(result)
             if len(result)!=0:
                 for users in result:            
@@ -345,9 +399,7 @@ async def show(ctx,health=None):
     await ctx.send(outputshow)
     
 
-bot.remove_command('help')
-@bot.command()
-async def help(ctx):
+def helpmake(adminFlag):
     embed=discord.Embed(title="私の使い方", color=0xf8d3cd)
     embed.set_author(name="体調チェックします!", icon_url="https://cdn.discordapp.com/avatars/762728476913434625/5857196be8122b7326d681025d22e582.png")
     embed.add_field(name="//help", value="ヘルプコマンドを表示します。DMからも確認できます。", inline=False)
@@ -355,34 +407,37 @@ async def help(ctx):
     embed.add_field(name="//reason [連絡したい事]", value="admin権限を持った人に、あなたの名前と体調を添えて連絡出来ます。DMからも送信できます", inline=False)
     embed.add_field(name="//info", value="開発チームからの情報(主に障害情報)をお知らせします。", inline=False)
     embed.add_field(name="//ver", value="私の更新情報を確認できます。", inline=False)
-
-    try:
-        if ctx.author.guild_permissions.administrator:
+    if adminFlag is True:
             embed.add_field(name="管理者向けコマンド一覧",value="adminを割り振られている方のみが使用できます。\nまた、このメッセージ以下が見えている方はadmin権限を有しています。", inline=False)
             embed.add_field(name="//call", value="体調確認と集計を開始します。また、送信されたチャンネルに集計用メッセージを送信します。\n(午前0時で自動的に集計を終了します)", inline=False)
             embed.add_field(name="//close", value="体調確認と集計を終了します。また、送信されたチャンネルに集計結果を出力します。", inline=False)
             embed.add_field(name="//show [h]", value="現在登録されているユーザーの一覧を表示します。また、hオプションを付けることで体調を報告した方の一覧を表示します。", inline=False)
+    embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
+    embed.set_footer(text=VERSION+" byこばさん SpecialThanks たかりん ")
+
+    return embed
+
+
+        
+
+
+bot.remove_command('help')
+@bot.command()
+async def help(ctx):
+    adminFlag=False
+    try:
+        if ctx.author.guild_permissions.administrator:
+            adminFlag = True
     except:
         pass
-    embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
-    
-    embed.set_footer(text="Version1.2 byこばさん SpecialThanks たかりん ")
+    embed=helpmake(adminFlag)
     await ctx.send(embed=embed)
 
 @bot.command()
 @commands.is_owner()
 async def userhelp(ctx):
     await ctx.message.delete()
-
-    embed=discord.Embed(title="私の使い方", color=0xf8d3cd)
-    embed.set_author(name="体調チェックします!", icon_url="https://cdn.discordapp.com/avatars/762728476913434625/5857196be8122b7326d681025d22e582.png")
-    embed.add_field(name="//help", value="ヘルプコマンドを表示します。DMからも確認できます。", inline=False)
-    embed.add_field(name="//add [学年] [クラスまたは所属分野] [お名前]", value="ユーザー情報の登録を行います。学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生以降の方は[J,M,E,D,A]から入力してください\n設定後DMが来ます,DMからも設定できます。", inline=False)
-    embed.add_field(name="//reason [連絡したい事]", value="admin権限を持った人に、あなたの名前と体調を添えて連絡出来ます。DMからも送信できます", inline=False)
-    embed.add_field(name="//info", value="開発チームからの情報(主に障害情報)をお知らせします。", inline=False)
-    embed.add_field(name="//ver", value="私の更新情報を確認できます。", inline=False)
-    embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
-    embed.set_footer(text="Version1.2 byこばさん SpecialThanks たかりん ")
+    embed = helpmake(False) 
     await ctx.send(embed=embed)
     
 
@@ -390,8 +445,8 @@ async def userhelp(ctx):
 async def info(ctx):
     embed=discord.Embed(title="お知らせ", color=0xf8d3cd)
     embed.add_field(name="DMが送信されない問題",value="一部のユーザーにDMが送信されない問題が確認されています。\nユーザーの設定側でフレンド以外からのDMを送受信しない設定を適用している可能性があります。", inline=False)
-    embed.add_field(name="集計結果に関する問題", value="集計結果が適切に処理されていない可能性があります。バックアップを行いながら調査しています。", inline=False)
-    embed.add_field(name="集計結果に関する問題", value="<続報>この問題は解決されました。次アップデートでこの情報は削除されます。", inline=False)
+    embed.add_field(name="集計結果に関する問題", value="自動集計機能が機能していません。後日のアップデートで更新されます。", inline=False)
+    embed.add_field(name="集計システムに関するバグ修正", value="突然Botがダウンし,復旧したときに集計を再開するシステムを修正しました。", inline=False)
     await ctx.send(embed=embed)
     pass
 
@@ -401,6 +456,7 @@ async def ver(ctx):
     embed.add_field(name="Version 1.0",value="リリース!", inline=False)
     embed.add_field(name="version 1.1", value="ver,infoコマンドを追加,Botの監視体制を強化,軽微なバグを修正", inline=False)
     embed.add_field(name="Version 1.2",value="集計システムの意図しない動作を修正,管理者向けにコマンドを追加", inline=False)
+    embed.add_field(name="Version 2.0",value="完全OSS化,集計結果などを見やすく変更,重大なバグを修正,軽微なバグを修正", inline=False)
     await ctx.send(embed=embed)
 
 
@@ -421,18 +477,27 @@ async def sh(ctx):
 	await bot.logout()
 
 
-TOKEN = ""
+"""
+VERSION=
+TOKEN=
+SEND_MESSAGE=
+MANEGE_CHANNNEL_ID=
+WEBHOOK_URL=
+"""
+
+configPath=os.path.join(basepath,"config")
+
 try:
-    with open(os.path.join(basepath,"HealthCheck-Config.txt"))as f:
-        BootData= f.read().splitlines()
-        TOKEN = BootData[0]
+    with open(os.path.join(configPath,"HealthCheck-Config.txt"))as f:
+        BootData = f.read().splitlines()
+        VERSION= BootData[0].split("=")[1]
+        TOKEN = BootData[1].split("=")[1]
+        CheckMessage = BootData[2].split("=")[1].replace(r"\n","\n")
+        ManageChannel = int(BootData[3].split("=")[1])
+        webhookURL=BootData[4].split("=")[1]
+
 except:
-    pass
+    print("Failed Boot!" )
 
-
-
-
-
-
-TimeTaskManage.start()
+#TimeTaskManage.start()
 bot.run(TOKEN)
