@@ -1,23 +1,12 @@
 from datetime import date
 import discord
-from discord import embeds
-from discord import message
-from discord import channel
-from discord import reaction
-from discord.embeds import Embed
-from discord import client
 from discord.ext import commands,tasks
-from discord.ext.commands import context
-from discord.ext.commands.converter import _Greedy
 from discord_webhook import DiscordWebhook, DiscordEmbed
 import sqlite3
 import time
 import os
 import datetime
-from discord.ext.commands.core import check_any
-from discord.flags import MessageFlags
 import requests
-import datetime
 
 basepath = os.path.split(os.path.realpath(__file__))[0]
 bot = commands.Bot(command_prefix='//')
@@ -56,8 +45,9 @@ def TaskClear():
 @tasks.loop(seconds=30)
 async def TimeTaskManage():
     #毎日0000にFlagが立っていれば集計and初期化する
-    if datetime.datetime.now().strftime('%H:%M') =="0000" and CheckFlag is True:
+    if datetime.datetime.now().strftime('%H:%M') =="00:00" and CheckFlag is True:
         Total()
+        
         TaskClear()
 
 #集計メソッド
