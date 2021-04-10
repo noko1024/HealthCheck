@@ -1,0 +1,8 @@
+#DataBaseFile
+*.db
+
+#TempFile,OutputFile and ConfigFile
+*.txt
+
+
+

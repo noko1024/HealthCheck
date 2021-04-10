@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands,tasks
-#import DiscordWebhook, DiscordEmbed
+from discord_webhook import DiscordWebhook, DiscordEmbed
 import sqlite3
 import time
 import os
@@ -37,7 +37,7 @@ def TaskClear():
         param = {"Content-Type":"application/json","content": "@everyone 【異常通知】\nTimeTaskManageの処理を正常に終了できませんでした。\nDBファイルのhealthStatus初期化失敗"}
         requests.post(webhookURL,data=param)
 
-    if result:
+    if result == True:
         CheckFlag = False
         CheckMessageID = None
     else:
@@ -47,8 +47,9 @@ def TaskClear():
 @tasks.loop(seconds=30)
 async def TimeTaskManage():
     #毎日0000にFlagが立っていれば集計and初期化する
-    if datetime.datetime.now().strftime('%H%M') == "0000" and CheckFlag:
+    if datetime.datetime.now().strftime('%H%M') =="0000" and CheckFlag == True:
         Total()
+        
         TaskClear()
 
 #集計メソッド
