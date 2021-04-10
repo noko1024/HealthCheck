@@ -15,7 +15,7 @@ CheckFlag = False
 #監視すべきMessageID
 CheckMessageID = 0
 #Callされた日の日付
-Savedate ="MM-DD"
+Savedate = "MM-DD"
 
 affiliationConvertDict = {"J":1,"M":2,"E":3,"D":4,"A":5}
 
@@ -24,7 +24,7 @@ def TaskClear():
     global CheckFlag
     global CheckMessageID
     #tempファイル削除
-    result=tempIO("remove")
+    result = tempIO("remove")
 
     try:
         #データベース初期化
@@ -47,7 +47,7 @@ def TaskClear():
 @tasks.loop(seconds=30)
 async def TimeTaskManage():
     #毎日0000にFlagが立っていれば集計and初期化する
-    if datetime.datetime.now().strftime('%H%M') =="0000" and CheckFlag:
+    if datetime.datetime.now().strftime('%H%M') == "0000" and CheckFlag:
         Total()
         TaskClear()
 
@@ -57,7 +57,7 @@ def Total():
     conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
     c = conn.cursor()
 
-    outputUser =[]
+    outputUser = []
     outputUser.append(Savedate)
 
     c.execute("select userGrade,userAffiliation,userName,healthStatus from userList where healthStatus != ? order by userGrade asc,affiliationInt asc",(0,))
@@ -91,7 +91,7 @@ def tempIO(type,messageID=None,date=None):
     elif type == "read":
         try:
             with open(configpath) as f:
-                read=f.readlines()
+                read = f.readlines()
                 return int(read[0]),read[1]
         except:
             return None,None
@@ -119,7 +119,7 @@ async def on_ready():
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    if CheckFlag !=True or CheckMessageID != payload.message_id:
+    if CheckFlag != True or CheckMessageID != payload.message_id:
         return
     #DMではmemberがNone
     if payload.member.bot:
@@ -157,7 +157,7 @@ async def on_raw_reaction_add(payload):
 
 @bot.event
 async def on_raw_reaction_remove(payload):
-    if CheckFlag !=True or CheckMessageID != payload.message_id:
+    if CheckFlag != True or CheckMessageID != payload.message_id:
         return
 
     conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
@@ -182,7 +182,6 @@ async def on_command_error(ctx,error):
     except:
         guildName ="DM"
     errorLog = ("エラーが発生しました：" +str(error)+"\nServername:"+guildName+"\nName:"+str(ctx.author))
-    print(errorLog)
     webhook = DiscordWebhook(url=webhookURL,content="@everyone")
     embed = DiscordEmbed(title='エラー', description=errorLog, color=0xff0000)
     webhook.add_embed(embed)
@@ -225,16 +224,13 @@ async def add(ctx,grade,affiliation,name):
     conn.commit()
     conn.close()
 
-    if grade =="1":
-        embed = discord.Embed(title = grade+"-"+affiliation+":"+name+"さんで登録が完了しました♪",description="//addコマンドでそのまま修正できます。ご協力ありがとうございます！")
-    else:
-        embed = discord.Embed(title = grade+affiliation+":"+name+"さんで登録が完了しました♪",description="//addコマンドでそのまま修正できます。ご協力ありがとうございます！")
+    embed = discord.Embed(title = grade+"-"+affiliation+":"+name+"さんで登録が完了しました♪",description="//addコマンドでそのまま修正できます。ご協力ありがとうございます！")
     await ctx.send(embed=embed)
 
 
 
 @bot.command()
-async def call(ctx,channelName = None):
+async def call(ctx,channelName=None):
     if not ctx.author.guild_permissions.administrator:
         await ctx.send("サーバーのadmin権限を持った方しか実行できません！")
         return
@@ -317,10 +313,10 @@ async def show(ctx,health=None):
             user = "%s-%s:%s 体調:%s\n" % (users[0],users[1],users[2],status)
             outputshow = outputshow + user
             num += 1
-        outputshow = outputshow+"計"+str(num)+"人"
+        outputshow = "%s計%s人" % (outputshow,num)
 
     else:
-        outputshow ="登録者一覧\n"
+        outputshow = "登録者一覧\n"
         c.execute("select userGrade,userAffiliation,userName from userList order by userGrade asc,affiliationInt asc")
         result = c.fetchall()
 
@@ -329,7 +325,7 @@ async def show(ctx,health=None):
             outputshow = outputshow + user
             num += 1
 
-        outputshow = outputshow+"計"+str(num)+"人"
+        outputshow = "%s計%s人" % (outputshow,num)
 
     conn.close()
     await ctx.send(outputshow)
@@ -416,7 +412,7 @@ with open(os.path.join(configPath,"HealthCheck-Config.json"))as d:
     f = d.read()
     data = json.loads(f)
 VERSION = data["VERSION"]
-TOKEN = data["TOKEN"]
+TOKEN = data["BOT_TOKEN"]
 CheckMessage = data["SEND_MESSAGE"]
 ManageChannel = data["MANEGE_CHANNEL_ID"]
 webhookURL = data["WEBHOOK_URL"]
