@@ -1,0 +1,13 @@
+{
+  "VERSION":"",
+  "BOT_TOKEN":"",
+  "CLIENT_ID":"",
+  "CLIENT_SECRET":"",
+  "GUILD_ID":"",
+  "USER_ID":"",
+  "ROLE_ID":"",
+  "REDIRECT_URL":"",
+  "SEND_MESSAGE":"",
+  "MANEGE_CHANNEL_ID":"",
+  "WEBHOOK_URL":""
+}
