@@ -9,7 +9,7 @@ import requests
 import json
 
 basepath = os.path.split(os.path.realpath(__file__))[0]
-bot = commands.Bot(command_prefix='test:')
+bot = commands.Bot(command_prefix='//')
 #体調チェックのフラグ
 CheckFlag = False
 #監視すべきMessageID
@@ -64,6 +64,8 @@ def Total():
     result = c.fetchall()
 
     conn.close()
+
+    statusConvertDict = {"1":"良好","2":"不良"}
 
     for users in result:
         status = statusConvertDict[str(users[3])]
