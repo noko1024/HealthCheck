@@ -8,8 +8,11 @@ import datetime
 import requests
 import json
 
+Intents = discord.Intents.default()
+Intents.members = True
+
 basepath = os.path.split(os.path.realpath(__file__))[0]
-bot = commands.Bot(command_prefix='//')
+bot = commands.Bot(command_prefix='//',intents=Intents)
 #体調チェックのフラグ
 CheckFlag = False
 #監視すべきMessageID
@@ -54,7 +57,6 @@ async def TimeTaskManage():
 
 #集計メソッド
 def Total():
-    print("GotoT")
     conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
     c = conn.cursor()
 
@@ -169,7 +171,6 @@ async def on_raw_reaction_remove(payload):
     user = bot.get_user(payload.user_id)
     await user.send("確認を取り消しました")
 
-
 @bot.event
 async def on_command_error(ctx,error):
     #引数不足
@@ -210,8 +211,6 @@ async def add(ctx,grade,affiliation,name):
         affiliationInt = affiliationConvertDict[affiliation]
     else:
         affiliationInt = int(affiliation)
-
-    print(affiliationInt)
 
     conn = sqlite3.connect(os.path.join(basepath,"HealthCheck-userList.db"))
     c = conn.cursor()
@@ -374,8 +373,8 @@ async def userhelp(ctx):
 async def info(ctx):
     embed = discord.Embed(title="お知らせ", color=0xf8d3cd)
     embed.add_field(name="DMが送信されない問題",value="一部のユーザーにDMが送信されない問題が確認されています。\nユーザーの設定側でフレンド以外からのDMを送受信しない設定を適用している可能性があります。", inline=False)
-    embed.add_field(name="集計結果に関する問題", value="自動集計機能が機能していません。後日のアップデートで更新されます。", inline=False)
-    embed.add_field(name="集計システムに関するバグ修正", value="突然Botがダウンし,復旧したときに集計を再開するシステムを修正しました。", inline=False)
+    embed.add_field(name="レスポンスの向上について", value="データベースの管理方法変更に伴い,Botの処理速度が向上しました(当社比)", inline=False)
+    embed.add_field(name="学年について", value="新3-4年生の皆さんは自動的に更新しました。\n新2年生の皆さんの学科情報が不明なため仮おきしています。各自更新をお願いします。", inline=False)
     await ctx.send(embed=embed)
 
 
@@ -386,6 +385,7 @@ async def ver(ctx):
     embed.add_field(name="version 1.1", value="ver,infoコマンドを追加,Botの監視体制を強化,軽微なバグを修正", inline=False)
     embed.add_field(name="Version 1.2",value="集計システムの意図しない動作を修正,管理者向けにコマンドを追加", inline=False)
     embed.add_field(name="Version 2.0",value="完全OSS化,集計結果などを見やすく変更,重大なバグを修正,軽微なバグを修正", inline=False)
+    embed.add_field(name="Version 3.0",value="Discord.pyの新バージョンに対応,データベースの管理方法を変更", inline=False)
     await ctx.send(embed=embed)
 
 
@@ -417,7 +417,6 @@ TOKEN = data["BOT_TOKEN"]
 CheckMessage = data["SEND_MESSAGE"]
 ManageChannel = data["MANEGE_CHANNEL_ID"]
 webhookURL = data["WEBHOOK_URL"]
-
 
 
 TimeTaskManage.start()
