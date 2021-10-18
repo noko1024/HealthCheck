@@ -231,10 +231,11 @@ async def add(ctx,grade,affiliation,name):
 
 @bot.command()
 async def call(ctx,channelName=None):
-    if not ctx.author.guild_permissions.administrator:
-        await ctx.send("サーバーのadmin権限を持った方しか実行できません！")
-        return
     global CheckFlag
+    if CheckFlag == True:
+        await ctx.send("既に集計を開始してます！")
+        return
+
     global CheckMessageID
     global Savedate
     await ctx.message.delete()
@@ -335,13 +336,13 @@ def helpmake(adminFlag):
     embed=discord.Embed(title="私の使い方", color=0xf8d3cd)
     embed.set_author(name="体調チェックします!", icon_url="https://cdn.discordapp.com/avatars/762728476913434625/5857196be8122b7326d681025d22e582.png")
     embed.add_field(name="//help", value="ヘルプコマンドを表示します。DMからも確認できます。", inline=False)
+    embed.add_field(name="//call", value="体調確認と集計を開始します。また、送信されたチャンネルに集計用メッセージを送信します。\n(午前0時で自動的に集計を終了します)", inline=False)
     embed.add_field(name="//add [学年] [クラスまたは所属分野] [お名前]", value="ユーザー情報の登録を行います。学年は数字で入力してください\nクラスは1年生の方は一桁の数字 2年生以降の方は[J,M,E,D,A]から入力してください\n設定後DMが来ます,DMからも設定できます。", inline=False)
     embed.add_field(name="//reason [連絡したい事]", value="admin権限を持った人に、あなたの名前と体調を添えて連絡出来ます。DMからも送信できます", inline=False)
     embed.add_field(name="//info", value="開発チームからの情報(主に障害情報)をお知らせします。", inline=False)
     embed.add_field(name="//ver", value="私の更新情報を確認できます。", inline=False)
     if adminFlag is True:
         embed.add_field(name="管理者向けコマンド一覧",value="adminを割り振られている方のみが使用できます。\nまた、このメッセージ以下が見えている方はadmin権限を有しています。", inline=False)
-        embed.add_field(name="//call", value="体調確認と集計を開始します。また、送信されたチャンネルに集計用メッセージを送信します。\n(午前0時で自動的に集計を終了します)", inline=False)
         embed.add_field(name="//close", value="体調確認と集計を終了します。また、送信されたチャンネルに集計結果を出力します。", inline=False)
         embed.add_field(name="//show [h]", value="現在登録されているユーザーの一覧を表示します。また、hオプションを付けることで体調を報告した方の一覧を表示します。", inline=False)
     embed.add_field(name="問い合わせ先:@こばさん#9491 ", value="定期的に再起動とアップデートを行います。メンテナンス時はお知らせします。", inline=False)
@@ -373,8 +374,7 @@ async def userhelp(ctx):
 async def info(ctx):
     embed = discord.Embed(title="お知らせ", color=0xf8d3cd)
     embed.add_field(name="DMが送信されない問題",value="一部のユーザーにDMが送信されない問題が確認されています。\nユーザーの設定側でフレンド以外からのDMを送受信しない設定を適用している可能性があります。", inline=False)
-    embed.add_field(name="レスポンスの向上について", value="データベースの管理方法変更に伴い,Botの処理速度が向上しました(当社比)", inline=False)
-    embed.add_field(name="学年について", value="新3-4年生の皆さんは自動的に更新しました。\n新2年生の皆さんの学科情報が不明なため仮おきしています。各自更新をお願いします。", inline=False)
+    embed.add_field(name="自動集計について", value="自動集計機能は不具合のため無効化されました。修正完了までお待ちください。", inline=False)
     await ctx.send(embed=embed)
 
 
@@ -386,6 +386,7 @@ async def ver(ctx):
     embed.add_field(name="Version 1.2",value="集計システムの意図しない動作を修正,管理者向けにコマンドを追加", inline=False)
     embed.add_field(name="Version 2.0",value="完全OSS化,集計結果などを見やすく変更,重大なバグを修正,軽微なバグを修正", inline=False)
     embed.add_field(name="Version 3.0",value="Discord.pyの新バージョンに対応,データベースの管理方法を変更", inline=False)
+    embed.add_field(name="Version 3.1",value="callコマンドの制限を緩和", inline=False)
     await ctx.send(embed=embed)
 
 
@@ -419,5 +420,5 @@ ManageChannel = data["MANEGE_CHANNEL_ID"]
 webhookURL = data["WEBHOOK_URL"]
 
 
-TimeTaskManage.start()
+#TimeTaskManage.start()
 bot.run(TOKEN)
