@@ -1,0 +1,15 @@
+version: "3"
+services:
+  healthChecker:
+    build: 
+      context: .
+      dockerfile: "./Server/Dockerfile"
+    environment:
+      - BOT_VERSION=4.0
+      - SEND_MESSAGE="お疲れ様でした♪\n部活動に参加された方はリアクションをお願いします♪\n良好⇒👌 不良⇒😫\n@everyone"
+    secrets:
+      - botConfig
+  
+  secrets:
+  botConfig:
+    file: config.csv

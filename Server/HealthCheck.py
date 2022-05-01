@@ -6,7 +6,7 @@ import time
 import os
 import datetime
 import requests
-import json
+import csv
 
 Intents = discord.Intents.default()
 Intents.members = True
@@ -75,7 +75,7 @@ def Total():
         user = "%s-%s:%s 体調:%s\n" % (users[0],users[1],users[2],status)
         outputUser.append(user)
 
-    Filepath = os.path.join(basepath,"HealthCheck-helthList("+Savedate+").txt")
+    Filepath = os.path.join(basepath,"HealthCheck-healthList("+Savedate+").txt")
     with open(Filepath,mode="w") as f :
         f.write('\n'.join(outputUser))
 
@@ -188,6 +188,7 @@ async def on_command_error(ctx,error):
     embed = DiscordEmbed(title='エラー', description=errorLog, color=0xff0000)
     webhook.add_embed(embed)
     webhook.execute()
+    ctx.send("引数の指定方法に誤りがあります！")
 
 
 #メッセージを全取得してフィルター
@@ -408,16 +409,18 @@ async def sh(ctx):
 	await bot.logout()
 
 
-configPath = os.path.join(basepath,"config")
 
-with open(os.path.join(configPath,"HealthCheck-Config.json"))as d:
-    f = d.read()
-    data = json.loads(f)
-VERSION = data["VERSION"]
-TOKEN = data["BOT_TOKEN"]
-CheckMessage = data["SEND_MESSAGE"]
-ManageChannel = data["MANEGE_CHANNEL_ID"]
-webhookURL = data["WEBHOOK_URL"]
+
+VERSION = os.getenv("BOT_VERSION")
+CheckMessage = os.getenv("SEND_MESSAGE")
+
+#機密情報の読み取り
+with open("/run/secrets/TEST_STOCK.csv", "r") as f:
+    config = csv.DictReader(f, delimiter=",", doublequote=True, lineterminator="\r\n", quotechar='"', skipinitialspace=True)
+TOKEN = config["BOT_TOKEN"]
+ManageChannel = config["CHANNEL_ID"]
+webhookURL = config["WEBHOOK_URL"]
+
 
 
 #TimeTaskManage.start()
