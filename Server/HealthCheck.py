@@ -6,12 +6,13 @@ import time
 import os
 import datetime
 import requests
-import csv
+import json
 
 Intents = discord.Intents.default()
 Intents.members = True
 
-basepath = os.path.split(os.path.realpath(__file__))[0]
+#basepath = os.path.split(os.path.realpath(__file__))[0]
+basepath = "/permanent"
 bot = commands.Bot(command_prefix='//',intents=Intents)
 #体調チェックのフラグ
 CheckFlag = False
@@ -188,7 +189,7 @@ async def on_command_error(ctx,error):
     embed = DiscordEmbed(title='エラー', description=errorLog, color=0xff0000)
     webhook.add_embed(embed)
     webhook.execute()
-    ctx.send("引数の指定方法に誤りがあります！")
+    await ctx.send("引数の指定方法に誤りがあります！")
 
 
 #メッセージを全取得してフィルター
@@ -415,8 +416,10 @@ VERSION = os.getenv("BOT_VERSION")
 CheckMessage = os.getenv("SEND_MESSAGE")
 
 #機密情報の読み取り
-with open("/run/secrets/TEST_STOCK.csv", "r") as f:
-    config = csv.DictReader(f, delimiter=",", doublequote=True, lineterminator="\r\n", quotechar='"', skipinitialspace=True)
+with open("/run/secrets/botConfig")as d:
+    f = d.read()
+    config = json.loads(f)
+
 TOKEN = config["BOT_TOKEN"]
 ManageChannel = config["CHANNEL_ID"]
 webhookURL = config["WEBHOOK_URL"]
